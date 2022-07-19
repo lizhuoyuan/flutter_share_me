@@ -99,7 +99,7 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
             if(imageUrl==""){
                 //mean user did not pass image url  so just got with text message
                 result("Sucess");
-                UIApplication.shared.openURL(whatsAppURL! as URL)
+                UIApplication.shared.open(whatsAppURL! as URL)
                 
             }
             else{
@@ -158,7 +158,7 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
         let whatsAppURL  = NSURL(string: whatsURL.addingPercentEncoding(withAllowedCharacters: characterSet)!)
         if UIApplication.shared.canOpenURL(whatsAppURL! as URL)
         {
-            UIApplication.shared.openURL(whatsAppURL! as URL)
+            UIApplication.shared.open(whatsAppURL! as URL)
             result("Sucess");
         }else{
             result(FlutterError(code: "Not found", message: "WhatsApp is not found", details: "WhatsApp not intalled or Check url scheme."));
@@ -174,7 +174,7 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
         if UIApplication.shared.canOpenURL(whatsAppURL! as URL)
         {
             result("Sucess");
-            UIApplication.shared.openURL(whatsAppURL! as URL)
+            UIApplication.shared.open(whatsAppURL! as URL)
         }
         else
         {
@@ -217,7 +217,7 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
         // open in safari
         do {
             if UIApplication.shared.canOpenURL(urlschme! as URL){
-                UIApplication.shared.openURL(urlschme!)
+                UIApplication.shared.open(urlschme!)
                 result("Sucess")
             }else{
                 result(FlutterError(code: "Not found", message: "Twitter is not found", details: "Twitter not intalled or Check url scheme."));
@@ -237,7 +237,7 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
         if UIApplication.shared.canOpenURL(telegramURL! as URL)
         {
             result("Sucess");
-            UIApplication.shared.openURL(telegramURL! as URL)
+            UIApplication.shared.open(telegramURL! as URL)
         }
         else
         {
