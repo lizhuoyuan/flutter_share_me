@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <queries>
         <package android:name="com.instagram.android" />
+        <package android:name="com.zhiliaoapp.musically" />
     </queries>
     <application>
         <provider

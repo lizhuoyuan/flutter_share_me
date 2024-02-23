@@ -51,6 +51,7 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
     final private static String _methodSystemShare = "system_share";
     final private static String _methodInstagramShare = "instagram_share";
     final private static String _methodTelegramShare = "telegram_share";
+    final private static String _methodTikTokShare = "tiktok_share";
 
 
     private Activity activity;
@@ -136,6 +137,11 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
             case _methodTelegramShare:
                 msg = call.argument("msg");
                 shareToTelegram(msg, result);
+                break;
+            case _methodTikTokShare:
+                msg = call.argument("url");
+                fileType = call.argument("fileType");
+                shareToTikTok(msg, fileType, result);
                 break;
             default:
                 result.notImplemented();
@@ -270,7 +276,7 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
     private void shareWhatsApp(String imagePath, String msg, Result result, boolean shareToWhatsAppBiz) {
         try {
             Intent whatsappIntent = new Intent(Intent.ACTION_SEND);
-            
+
             whatsappIntent.setPackage(shareToWhatsAppBiz ? "com.whatsapp.w4b" : "com.whatsapp");
             whatsappIntent.putExtra(Intent.EXTRA_TEXT, msg);
             // if the url is the not empty then get url of the file and share
@@ -298,7 +304,7 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
      * @param msg                String
      * @param result             Result
      */
-    
+
     private void shareToTelegram(String msg, Result result) {
         try {
             Intent telegramIntent = new Intent(Intent.ACTION_SEND);
@@ -313,6 +319,38 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
             }
         } catch (Exception var9) {
             result.error("error", var9.toString(), "");
+        }
+    }
+      /**
+     * share to tiktok
+     *
+     * @param url      local file path
+     * @param fileType type of file to share (image or video)
+     * @param result   flutterResult
+     */
+
+    private void shareToTikTok(String url, String fileType, Result result) {
+        // if (instagramInstalled()) {
+        if (true) { //TODO: check tiktok installed
+            File file = new File(url);
+            Uri fileUri = FileProvider.getUriForFile(activity, activity.getApplicationContext().getPackageName() + ".provider", file);
+
+            Intent tiktokIntent = new Intent(Intent.ACTION_SEND);
+            if(fileType.equals("image"))
+                tiktokIntent.setType("image/*");
+            else if(fileType.equals("video"))
+                tiktokIntent.setType("video/*");
+            tiktokIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
+            tiktokIntent.setPackage("com.zhiliaoapp.musically");
+            try {
+                activity.startActivity(tiktokIntent);
+                result.success("Success");
+            } catch (ActivityNotFoundException e) {
+                e.printStackTrace();
+                result.success("Failure");
+            }
+        } else {
+            result.error("TikTok not found", "TikTok is not installed on device.", "");
         }
     }
     /**

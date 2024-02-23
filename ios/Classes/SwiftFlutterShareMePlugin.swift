@@ -1,7 +1,12 @@
 import Flutter
 import UIKit
-import FBSDKShareKit
+import Foundation
+import Photos
 import PhotosUI
+import FBSDKShareKit
+import TikTokOpenSDKCore
+import TikTokOpenShareSDK
+
 public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate {
     
     
@@ -13,7 +18,8 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
     let _methodInstagram = "instagram_share";
     let _methodSystemShare = "system_share";
     let _methodTelegramShare = "telegram_share";
-    
+    let _methodTikTokShare = "tiktok_share";
+
     var result: FlutterResult?
     var documentInteractionController: UIDocumentInteractionController?
     
@@ -61,7 +67,7 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
         else if(call.method.elementsEqual(_methodFaceBook)){
             let args = call.arguments as? Dictionary<String,Any>
             sharefacebook(message: args!, result: result)
-            
+
         }else if(call.method.elementsEqual(_methodTwitter)){
             let args = call.arguments as? Dictionary<String,Any>
             shareTwitter(message: args!["msg"] as! String, url: args!["url"] as! String, result: result)
@@ -74,13 +80,17 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
             let args = call.arguments as? Dictionary<String,Any>
             shareToTelegram(message: args!["msg"] as! String, result: result )
         }
+        else if(call.method.elementsEqual(_methodTikTokShare)){
+            let args = call.arguments as! Dictionary<String,Any>
+            shareToTikTok(args: args, result: result)
+        }
         else{
             let args = call.arguments as? Dictionary<String,Any>
             systemShare(message: args!["msg"] as! String,result: result)
         }
     }
-    
-    
+
+
     func shareWhatsApp(message:String, imageUrl:String,type:String,result: @escaping FlutterResult)  {
         // @ For ios
         // we can't set both if you pass image then text will ignore
@@ -244,6 +254,81 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
             result(FlutterError(code: "Not found", message: "telegram is not found", details: "telegram not intalled or Check url scheme."));
         }
     
+    }
+
+    // share image/video via TikTok.
+    func shareToTikTok(args: Dictionary<String,Any>, result: @escaping FlutterResult)  {
+        let redirectUrl = ""
+        let videoFile = args["url"] as! String
+        let fileType = args["fileType"] as! String
+
+        let videoData = try? Data(contentsOf:  URL(fileURLWithPath: videoFile)) as NSData
+
+        PHPhotoLibrary.requestAuthorization(){ newStatus in
+            print("The new status is \(newStatus.rawValue)")
+
+            PHPhotoLibrary.shared().performChanges({
+                let documentsPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0];
+                let filePath = "\(documentsPath)/\(Date().description)" + (fileType == "image" ? ".jpeg" : ".mp4")
+
+                videoData!.write(toFile: filePath, atomically: true)
+                if fileType == "image" {
+                    PHAssetChangeRequest.creationRequestForAssetFromImage(
+                        atFileURL: URL(fileURLWithPath: filePath)
+                    )
+                } else {
+                    PHAssetChangeRequest.creationRequestForAssetFromVideo(
+                        atFileURL: URL(fileURLWithPath: filePath)
+                    )
+                }
+            }, completionHandler: { success, error in
+                if success {
+                    let fetchOptions = PHFetchOptions()
+                    fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+
+                    let fetchResult = PHAsset.fetchAssets(
+                        with: fileType == "image" ? .image : .video,
+                        options: fetchOptions
+                    )
+
+                    guard let lastAsset = fetchResult.firstObject else {
+                        result("Error acessing asset")
+                        return
+                    }
+
+                    let localIdentifier = lastAsset.localIdentifier
+                    let shareRequest = TikTokShareRequest(
+                        localIdentifiers: [localIdentifier],
+                        mediaType: fileType == "image" ? .image : .video,
+                        redirectURI: redirectUrl
+                    )
+                    shareRequest.shareFormat = .normal
+
+                    DispatchQueue.main.async {
+                        shareRequest.send() { response in
+                            guard let shareResponse = response as? TikTokShareResponse else {
+                                result("Tiktok no response")
+                                return
+                            }
+
+                            if shareResponse.errorCode == .noError {
+                                result("Success")
+                            } else {
+                                print("Share Failed! Error Code: \(shareResponse.errorCode.rawValue) " +
+                                      "Error Message: \(shareResponse.errorDescription ?? "") " +
+                                      "Share State: \(shareResponse.shareState)")
+                                result("Share to TikTok error")
+                            }
+                        }
+                    }
+                } else if let error {
+                    print(error.localizedDescription)
+                    result("Error accessing Photo library")
+                } else {
+                    result("Error getting the files!")
+                }
+            })
+        }
     }
 
     //share via system native dialog

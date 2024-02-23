@@ -6,7 +6,9 @@ import 'file_type.dart';
 export 'package:flutter_share_me/file_type.dart';
 
 class FlutterShareMe {
-  final MethodChannel _channel = const MethodChannel('flutter_share_me');
+  const FlutterShareMe();
+
+  static const MethodChannel _channel = MethodChannel('flutter_share_me');
 
   static const String _methodWhatsApp = 'whatsapp_share';
   static const String _methodWhatsAppPersonal = 'whatsapp_personal';
@@ -17,6 +19,7 @@ class FlutterShareMe {
   static const String _methodInstagramShare = 'instagram_share';
   static const String _methodSystemShare = 'system_share';
   static const String _methodTelegramShare = 'telegram_share';
+  static const String _methodTikTokShare = 'tiktok_share';
 
   ///share to WhatsApp
   /// [imagePath] is local image
@@ -118,19 +121,20 @@ class FlutterShareMe {
   }
 
   ///share to messenger
-  Future<String?> shareToMessenger({required String msg, String url = ''}) async {
+  Future<String?> shareToMessenger(
+      {required String msg, String url = ''}) async {
     final Map<String, dynamic> arguments = <String, dynamic>{};
     arguments.putIfAbsent('msg', () => msg);
     arguments.putIfAbsent('url', () => url);
     String? result;
     try {
-      result = await _channel.invokeMethod<String?>(_methodMessenger, arguments);
+      result =
+          await _channel.invokeMethod<String?>(_methodMessenger, arguments);
     } catch (e) {
       return e.toString();
     }
     return result;
   }
-
 
   ///share to twitter
   ///[msg] string that you want share.
@@ -160,8 +164,10 @@ class FlutterShareMe {
   }
 
   ///share file to instagram
-  Future<String?> shareToInstagram(
-      {required String filePath, FileType fileType = FileType.image}) async {
+  Future<String?> shareToInstagram({
+    required String filePath,
+    FileType fileType = FileType.image,
+  }) async {
     final Map<String, dynamic> arguments = <String, dynamic>{};
     arguments.putIfAbsent('url', () => filePath);
     if (fileType == FileType.image) {
@@ -178,5 +184,25 @@ class FlutterShareMe {
       return e.toString();
     }
     return result;
+  }
+
+  ///share file to tiktok
+  Future<String?> shareToTikTok({
+    required String filePath,
+    FileType fileType = FileType.image,
+  }) async {
+    final Map<String, dynamic> arguments = <String, dynamic>{
+      'url': filePath,
+      'fileType': fileType == FileType.image ? 'image' : 'video',
+    };
+
+    try {
+      return await _channel.invokeMethod<String>(
+        _methodTikTokShare,
+        arguments,
+      );
+    } catch (e) {
+      return e.toString();
+    }
   }
 }
