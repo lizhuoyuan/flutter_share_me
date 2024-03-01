@@ -266,6 +266,18 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
 
         PHPhotoLibrary.requestAuthorization(){ newStatus in
             print("The new status is \(newStatus.rawValue)")
+            
+            if #available(iOS 14, *) {
+                if newStatus != .authorized || newStatus != .limited {
+                    self.permissionNotGranted(result: result)
+                    return
+                }
+            } else {
+                if newStatus != .authorized {
+                    self.permissionNotGranted(result: result)
+                    return
+                }
+            }
 
             PHPhotoLibrary.shared().performChanges({
                 let documentsPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0];
@@ -415,5 +427,10 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
     
     public func sharerDidCancel(_ sharer: Sharing) {
         print("Share: Cancel")
+    }
+    
+    // - MARK: Permission not granted
+    private func permissionNotGranted(result: @escaping FlutterResult) {
+        result("Permission not grated")
     }
 }
