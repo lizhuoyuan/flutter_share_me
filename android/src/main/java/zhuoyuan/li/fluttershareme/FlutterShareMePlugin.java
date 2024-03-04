@@ -52,6 +52,7 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
     final private static String _methodInstagramShare = "instagram_share";
     final private static String _methodTelegramShare = "telegram_share";
     final private static String _methodTikTokShare = "tiktok_share";
+    final private static String _methodCheckAppAvailable = "check_app_available";
 
 
     private Activity activity;
@@ -142,6 +143,9 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
                 msg = call.argument("url");
                 fileType = call.argument("fileType");
                 shareToTikTok(msg, fileType, result);
+                break;
+            case _methodCheckAppAvailable:
+                checkAppAvailable(call.argument("app"), result);
                 break;
             default:
                 result.notImplemented();
@@ -423,6 +427,38 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
     @Override
     public void onDetachedFromActivity() {
 
+    }
+
+    ///Utils methods
+    private void checkAppAvailable(String app, Result result) {
+      String packageName = mapAppNameToPackage(app);
+        try {
+            if (activity != null) {
+                activity.getPackageManager()
+                        .getApplicationInfo(packageName, 0);
+                result.success(true);
+            } else {
+                Log.d("App", "App (" + packageName + ") is not installed on your device");
+                result.success(false);
+            }
+        } catch (PackageManager.NameNotFoundException e) {
+            result.success(false);
+        }
+    }
+
+    private String mapAppNameToPackage(String app) {
+        switch (app) {
+            case "tiktok":
+                return "com.zhiliaoapp.musically";
+            case "instagram":
+                return "com.instagram.android";
+            case "facebookMessenger":
+                return "com.facebook.orca";
+            case "whatsapp":
+                return "com.whatsapp";
+            default:
+                return null;
+        }
     }
 
     ///Utils methods

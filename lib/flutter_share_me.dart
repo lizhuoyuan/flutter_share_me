@@ -20,6 +20,7 @@ class FlutterShareMe {
   static const String _methodSystemShare = 'system_share';
   static const String _methodTelegramShare = 'telegram_share';
   static const String _methodTikTokShare = 'tiktok_share';
+  static const String _methodCheckAppAvailable = 'check_app_available';
 
   ///share to WhatsApp
   /// [imagePath] is local image
@@ -203,6 +204,47 @@ class FlutterShareMe {
       );
     } catch (e) {
       return e.toString();
+    }
+  }
+
+  Future<bool> checkAppAvailable(AppValue app) async {
+    final Map<String, dynamic> arguments = <String, dynamic>{
+      'app': app.name,
+    };
+
+    return (await _channel.invokeMethod<bool>(
+          _methodCheckAppAvailable,
+          arguments,
+        )) ??
+        false;
+  }
+}
+
+enum AppValue {
+  tiktok,
+  instagram,
+  facebookMessenger,
+  whatsapp,
+  sms,
+}
+
+extension AppValueExtension on AppValue {
+  String get name {
+    switch (this) {
+      case AppValue.tiktok:
+        return 'tiktok';
+
+      case AppValue.instagram:
+        return 'instagram';
+
+      case AppValue.facebookMessenger:
+        return 'facebookMessenger';
+
+      case AppValue.whatsapp:
+        return 'whatsapp';
+
+      case AppValue.sms:
+        return 'sms';
     }
   }
 }
