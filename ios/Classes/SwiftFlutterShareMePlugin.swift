@@ -268,7 +268,7 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
             print("The new status is \(newStatus.rawValue)")
             
             if #available(iOS 14, *) {
-                if newStatus != .authorized || newStatus != .limited {
+                if ![PHAuthorizationStatus.authorized, PHAuthorizationStatus.limited].contains(newStatus) {
                     self.permissionNotGranted(result: result)
                     return
                 }
@@ -319,20 +319,20 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
                     DispatchQueue.main.async {
                         shareRequest.send() { response in
                             guard let shareResponse = response as? TikTokShareResponse else {
-                                result("Tiktok no response")
+                                print("Tiktok no response")
                                 return
                             }
 
                             if shareResponse.errorCode == .noError {
-                                result("Success")
+                                print("Success")
                             } else {
                                 print("Share Failed! Error Code: \(shareResponse.errorCode.rawValue) " +
                                       "Error Message: \(shareResponse.errorDescription ?? "") " +
                                       "Share State: \(shareResponse.shareState)")
-                                result("Share to TikTok error")
                             }
                         }
                     }
+                    result("Success")
                 } else if let error {
                     print(error.localizedDescription)
                     result("Error accessing Photo library")
