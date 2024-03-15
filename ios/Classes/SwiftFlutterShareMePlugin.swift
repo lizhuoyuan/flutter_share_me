@@ -22,7 +22,7 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
 
     var result: FlutterResult?
     var documentInteractionController: UIDocumentInteractionController?
-    
+    var onPickFileCompletionHandler: ((String?) -> Void)? = nil
     
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(name: "flutter_share_me", binaryMessenger: registrar.messenger())
@@ -74,7 +74,7 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
         }
         else if(call.method.elementsEqual(_methodInstagram)){
             let args = call.arguments as? Dictionary<String,Any>
-            shareInstagram(args: args!)
+            shareInstagram(args: args!, result: result)
         }
         else if(call.method.elementsEqual(_methodTelegramShare)){
             let args = call.arguments as? Dictionary<String,Any>
@@ -255,91 +255,130 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
         }
     
     }
+    
+    private func requestAddFileToPhotoLibraryPermission(_ completionHandler: @escaping (PHAuthorizationStatus) -> Void ) {
+        if #available(iOS 14.0, *) {
+            let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+            if [PHAuthorizationStatus.authorized, PHAuthorizationStatus.limited].contains(status) {
+                completionHandler(status)
+                return
+            }
+
+            PHPhotoLibrary.requestAuthorization(for: .readWrite) { newStatus in
+                completionHandler(newStatus)
+            }
+        } else {
+            PHPhotoLibrary.requestAuthorization { newStatus in
+                completionHandler(newStatus)
+            }
+        }
+    }
+
+    private func addFileToPhotoLibrary(to filePath: String,
+                                       fileType: String,
+                                       completionHandler: @escaping (String?) -> Void) {
+        guard let fileData = try? Data(contentsOf:  URL(fileURLWithPath: filePath)) as NSData else {
+            print("error getting file data")
+            completionHandler(nil)
+            return
+        }
+
+        PHPhotoLibrary.shared().performChanges {
+            if fileType == "image" {
+                PHAssetChangeRequest.creationRequestForAssetFromImage(
+                    atFileURL: URL(fileURLWithPath: filePath)
+                )
+            } else {
+                PHAssetChangeRequest.creationRequestForAssetFromVideo(
+                    atFileURL: URL(fileURLWithPath: filePath)
+                )
+            }
+        } completionHandler: { success, error in
+            if let error {
+                print("error saving file to PHPhotoLibrary \(error.localizedDescription)")
+            }
+            
+            if success {
+                if #available(iOS 14, *),
+                   PHPhotoLibrary.authorizationStatus(for: .readWrite) == PHAuthorizationStatus.limited {
+                    self.displayPHPhotoPicker { fileIdentifier in
+                        completionHandler(fileIdentifier)
+                    }
+                    return
+                }
+
+                let fetchOptions = PHFetchOptions()
+                fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate",
+                                                                 ascending: false)]
+                let fetchResult = PHAsset.fetchAssets(
+                    with: fileType == "image" ? .image : .video,
+                    options: fetchOptions
+                )
+
+                if let assetToShare = fetchResult.firstObject {
+                    completionHandler(assetToShare.localIdentifier)
+                    return
+                } else {
+                    print("error querying file asset")
+                }
+            }
+
+            completionHandler(nil)
+        }
+    }
 
     // share image/video via TikTok.
     func shareToTikTok(args: Dictionary<String,Any>, result: @escaping FlutterResult)  {
         let redirectUrl = ""
-        let videoFile = args["url"] as! String
+        let file = args["url"] as! String
         let fileType = args["fileType"] as! String
 
-        let videoData = try? Data(contentsOf:  URL(fileURLWithPath: videoFile)) as NSData
-
-        PHPhotoLibrary.requestAuthorization(){ newStatus in
+        self.requestAddFileToPhotoLibraryPermission { newStatus in
             print("The new status is \(newStatus.rawValue)")
             
             if #available(iOS 14, *) {
                 if ![PHAuthorizationStatus.authorized, PHAuthorizationStatus.limited].contains(newStatus) {
-                    self.permissionNotGranted(result: result)
+                    result("permission not granted")
                     return
                 }
             } else {
                 if newStatus != .authorized {
-                    self.permissionNotGranted(result: result)
+                    result("permission not granted")
                     return
                 }
             }
-
-            PHPhotoLibrary.shared().performChanges({
-                let documentsPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0];
-                let filePath = "\(documentsPath)/\(Date().description)" + (fileType == "image" ? ".jpeg" : ".mp4")
-
-                videoData!.write(toFile: filePath, atomically: true)
-                if fileType == "image" {
-                    PHAssetChangeRequest.creationRequestForAssetFromImage(
-                        atFileURL: URL(fileURLWithPath: filePath)
-                    )
-                } else {
-                    PHAssetChangeRequest.creationRequestForAssetFromVideo(
-                        atFileURL: URL(fileURLWithPath: filePath)
-                    )
+            
+            self.addFileToPhotoLibrary(to: file, fileType: fileType) { destinationIdentifier in
+                guard let destinationIdentifier else {
+                    result("failed to save file to library")
+                    return
                 }
-            }, completionHandler: { success, error in
-                if success {
-                    let fetchOptions = PHFetchOptions()
-                    fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
 
-                    let fetchResult = PHAsset.fetchAssets(
-                        with: fileType == "image" ? .image : .video,
-                        options: fetchOptions
-                    )
+                let shareRequest = TikTokShareRequest(
+                    localIdentifiers: [destinationIdentifier],
+                    mediaType: fileType == "image" ? .image : .video,
+                    redirectURI: redirectUrl
+                )
+                shareRequest.shareFormat = .normal
 
-                    guard let lastAsset = fetchResult.firstObject else {
-                        result("Error acessing asset")
-                        return
-                    }
+                DispatchQueue.main.async {
+                    shareRequest.send() { response in
+                        guard let shareResponse = response as? TikTokShareResponse else {
+                            print("Tiktok no response")
+                            return
+                        }
 
-                    let localIdentifier = lastAsset.localIdentifier
-                    let shareRequest = TikTokShareRequest(
-                        localIdentifiers: [localIdentifier],
-                        mediaType: fileType == "image" ? .image : .video,
-                        redirectURI: redirectUrl
-                    )
-                    shareRequest.shareFormat = .normal
-
-                    DispatchQueue.main.async {
-                        shareRequest.send() { response in
-                            guard let shareResponse = response as? TikTokShareResponse else {
-                                print("Tiktok no response")
-                                return
-                            }
-
-                            if shareResponse.errorCode == .noError {
-                                print("Success")
-                            } else {
-                                print("Share Failed! Error Code: \(shareResponse.errorCode.rawValue) " +
-                                      "Error Message: \(shareResponse.errorDescription ?? "") " +
-                                      "Share State: \(shareResponse.shareState)")
-                            }
+                        if shareResponse.errorCode == .noError {
+                            print("Success")
+                        } else {
+                            print("Share Failed! Error Code: \(shareResponse.errorCode.rawValue) " +
+                                  "Error Message: \(shareResponse.errorDescription ?? "") " +
+                                  "Share State: \(shareResponse.shareState)")
                         }
                     }
-                    result("Success")
-                } else if let error {
-                    print(error.localizedDescription)
-                    result("Error accessing Photo library")
-                } else {
-                    result("Error getting the files!")
                 }
-            })
+                result("Success")
+            }
         }
     }
 
@@ -348,7 +387,7 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
     func systemShare(message:String,result: @escaping FlutterResult)  {
         // find the root view controller
         let viewController = UIApplication.shared.delegate?.window??.rootViewController
-        
+
         // set up activity view controller
         // Here is the message for for sharing
         let objectsToShare = [message] as [Any]
@@ -369,68 +408,107 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
     
     // share image via instagram stories.
     // @ args image url
-    func shareInstagram(args:Dictionary<String,Any>)  {
-        let imageUrl=args["url"] as! String
-    
-        let image = UIImage(named: imageUrl)
-        if(image==nil){
-            self.result!("File format not supported Please check the file.")
-            return;
-        }
+    func shareInstagram(args: Dictionary<String,Any>, result: @escaping FlutterResult)  {
+        let file = args["url"] as! String
+        let fileType = args["fileType"] as! String
+        
         guard let instagramURL = NSURL(string: "instagram://app") else {
-            if let result = result {
-                self.result?("Instagram app is not installed on your device")
-                result(false)
-            }
+            result("Instagram app is not installed on your device")
             return
         }
         
-        do{
-            try PHPhotoLibrary.shared().performChangesAndWait {
-                let request = PHAssetChangeRequest.creationRequestForAsset(from: image!)
-                let assetId = request.placeholderForCreatedAsset?.localIdentifier
-                let instShareUrl:String? = "instagram://library?LocalIdentifier=" + assetId!
-                
-                //Share image
-                if UIApplication.shared.canOpenURL(instagramURL as URL) {
-                    if let sharingUrl = instShareUrl {
-                        if let urlForRedirect = NSURL(string: sharingUrl) {
-                            if #available(iOS 10.0, *) {
-                                UIApplication.shared.open(urlForRedirect as URL, options: [:], completionHandler: nil)
-                            }
-                            else{
-                                UIApplication.shared.openURL(urlForRedirect as URL)
-                            }
-                        }
-                        self.result?("Success")
-                    }
-                } else{
-                    self.result?("Instagram app is not installed on your device")
+        self.requestAddFileToPhotoLibraryPermission { newStatus in
+            print("The new status is \(newStatus.rawValue)")
+
+            if #available(iOS 14, *) {
+                if ![PHAuthorizationStatus.authorized, PHAuthorizationStatus.limited].contains(newStatus) {
+                    result("permission not granted")
+                    return
+                }
+            } else {
+                if newStatus != .authorized {
+                    result("permission not granted")
+                    return
                 }
             }
-        
-        } catch {
-            print("Fail")
+
+            self.addFileToPhotoLibrary(to: file, fileType: fileType) { destinationIdentifier in
+                guard let destinationIdentifier else {
+                    result("failed to save file to library")
+                    return
+                }
+
+                let instaShareUrl = "instagram://library?LocalIdentifier=\(destinationIdentifier)"
+
+                // Share file
+                if UIApplication.shared.canOpenURL(instagramURL as URL) {
+                    if let urlForRedirect = NSURL(string: instaShareUrl) {
+                        if #available(iOS 10.0, *) {
+                            UIApplication.shared.open(urlForRedirect as URL, options: [:], completionHandler: nil)
+                        } else{
+                            UIApplication.shared.openURL(urlForRedirect as URL)
+                        }
+                    }
+                    result("Success")
+                } else {
+                    result("Instagram app is not installed on your device")
+                }
+            }
         }
     }
-    
+
     //Facebook delegate methods
     public func sharer(_ sharer: Sharing, didCompleteWithResults results: [String : Any]) {
         print("Share: Success")
-        
+
     }
-    
+
     public func sharer(_ sharer: Sharing, didFailWithError error: Error) {
         print("Share: Fail")
-        
+
     }
-    
+
     public func sharerDidCancel(_ sharer: Sharing) {
         print("Share: Cancel")
     }
-    
-    // - MARK: Permission not granted
-    private func permissionNotGranted(result: @escaping FlutterResult) {
-        result("Permission not grated")
+}
+
+// - MARK: PHPickerViewControllerDelegate
+@available(iOS 14, *)
+extension SwiftFlutterShareMePlugin: PHPickerViewControllerDelegate {
+    private func displayPHPhotoPicker(completionHandler: ((String?) -> Void)?) {
+        self.onPickFileCompletionHandler = completionHandler
+        DispatchQueue.main.async {
+            self.triggerPicker()
+        }
+    }
+
+    @IBAction private func triggerPicker() {
+        let photoLibrary = PHPhotoLibrary.shared()
+        var configuration = PHPickerConfiguration(photoLibrary: photoLibrary)
+        configuration.selectionLimit = 1
+        configuration.preferredAssetRepresentationMode = .compatible
+
+        let picker = PHPickerViewController(configuration: configuration)
+        picker.delegate = self
+
+        UIApplication.shared.keyWindow?.rootViewController?.present(picker, animated: true)
+    }
+
+    public func picker(_ picker: PHPickerViewController,
+                       didFinishPicking results: [PHPickerResult]) {
+        picker.dismiss(animated: true, completion: nil)
+        let identifiers = results.compactMap(\.assetIdentifier)
+        let fetchOptions = PHFetchOptions()
+        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate",
+                                                         ascending: false)]
+        let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: identifiers, options: fetchOptions)
+        guard let localId = fetchResult.firstObject else {
+            print("no asset selected")
+            self.onPickFileCompletionHandler?(nil)
+            return
+        }
+
+        self.onPickFileCompletionHandler?(localId.localIdentifier)
     }
 }
