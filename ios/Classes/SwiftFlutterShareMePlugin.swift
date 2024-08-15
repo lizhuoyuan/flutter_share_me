@@ -64,7 +64,7 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
             
         }else if(call.method.elementsEqual(_methodTwitter)){
             let args = call.arguments as? Dictionary<String,Any>
-            shareTwitter(message: args!["msg"] as! String, url: args!["url"] as! String, result: result)
+            shareTwitter(message: args!["msg"] as! String, result: result)
         }
         else if(call.method.elementsEqual(_methodInstagram)){
             let args = call.arguments as? Dictionary<String,Any>
@@ -180,7 +180,7 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
             result(FlutterError(code: "Not found", message: "WhatsAppBusiness is not found", details: "WhatsAppBusiness not intalled or Check url scheme."));
         }
     }
-    // share twitter
+    // share facebook
     // params
     // @ map conting meesage and url
     
@@ -200,16 +200,9 @@ public class SwiftFlutterShareMePlugin: NSObject, FlutterPlugin, SharingDelegate
     // share twitter params
     // @ message
     // @ url
-    func shareTwitter(message:String,url:String, result: @escaping FlutterResult)  {
-        let urlstring = url
+    func shareTwitter(message:String, result: @escaping FlutterResult)  {
         let twitterUrl =  "twitter://post?message=\(message)"
-        
-        let urlTextEscaped = urlstring.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed)
-        let url = URL(string: urlTextEscaped ?? "")
-        
-        let urlWithLink = twitterUrl + url!.absoluteString
-        
-        let escapedShareString = urlWithLink.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed)!
+        let escapedShareString = twitterUrl.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed)!
         // cast to an url
         let urlschme = URL(string: escapedShareString)
         // open in safari
