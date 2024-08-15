@@ -50,14 +50,14 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
     final private static String _methodWhatsAppBusiness = "whatsapp_business_share";
     
     final private static String _methodFaceBook = "facebook_share";
-    final private static String _methodMessengerNew = "messenger_share_new";
+    final private static String _methodMessenger = "messenger_share";
     
-    final private static String _methodTwitterNew = "twitter_share_new";
+    final private static String _methodTwitter = "twitter_share";
     
     final private static String _methodSystemShare = "system_share";
     
     final private static String _methodInstagramShare = "instagram_share";
-    final private static String _methodInstagramShareNew = "instagram_share_new";
+    final private static String _methodInstagramShareText = "instagram_share_text";
     
     final private static String _methodTelegramShare = "telegram_share";
 
@@ -108,13 +108,13 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
                 msg = call.argument("msg");
                 shareToFacebook(url, msg, result);
                 break;
-            case _methodMessengerNew:
+            case _methodMessenger:
                 msg = call.argument("msg");
-                shareToMessengerNew( msg, result);
+                shareToMessenger( msg, result);
                 break;
-            case _methodTwitterNew:
+            case _methodTwitter:
                 msg = call.argument("msg");
-                shareToTwitterNew(msg, result);
+                shareToTwitter(msg, result);
                 break;
             case _methodWhatsApp:
                 msg = call.argument("msg");
@@ -140,9 +140,9 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
                 fileType = call.argument("fileType");
                 shareInstagramStory(msg, fileType, result);
                 break;
-            case _methodInstagramShareNew:
+            case _methodInstagramShareText:
                 msg = call.argument("msg");
-                shareInstagramNew(msg,  result);
+                shareInstagramText(msg,  result);
                 break;
             case _methodTelegramShare:
                 msg = call.argument("msg");
@@ -175,11 +175,10 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
     /**
      * share to twitter
      *
-     * @param url    String
      * @param msg    String
      * @param result Result
      */
-    private void shareToTwitterNew(String msg,  Result result) {
+    private void shareToTwitter(String msg,  Result result) {
         if (twitterInstalled()) {
             List<Intent> targetedShareIntents = new ArrayList<Intent>();
 
@@ -263,11 +262,10 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
     /**
      * share to Messenger
      *
-     * @param url    String
      * @param msg    String
      * @param result Result
      */
-    private void shareToMessengerNew(String msg,  Result result) {
+    private void shareToMessenger(String msg,  Result result) {
         if (messengerInstalled()) {
             List<Intent> targetedShareIntents = new ArrayList<Intent>();
 
@@ -415,7 +413,7 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
         }
     }
 
-    private void shareInstagramNew(String msg,  Result result) {
+    private void shareInstagramText(String msg,  Result result) {
         if (instagramInstalled()) {
             List<Intent> targetedShareIntents = new ArrayList<Intent>();
 
