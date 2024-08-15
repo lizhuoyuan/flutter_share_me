@@ -118,19 +118,16 @@ class FlutterShareMe {
 
   /// share to messenger [Android only]
   Future<String?> shareToMessenger({required String msg}) async {
-       final Map<String, dynamic> arguments = <String, dynamic>{};
+    final Map<String, dynamic> arguments = <String, dynamic>{};
     arguments.putIfAbsent('msg', () => msg);
     String? result;
     try {
-      result =
-      await _channel.invokeMethod<String>(_methodMessenger, arguments);
+      result = await _channel.invokeMethod<String>(_methodMessenger, arguments);
     } catch (e) {
       return e.toString();
     }
     return result;
   }
-  }
-
 
   /// share to twitter
   /// [msg] string that you want share.
@@ -139,8 +136,7 @@ class FlutterShareMe {
     arguments.putIfAbsent('msg', () => msg);
     String? result;
     try {
-      result =
-          await _channel.invokeMethod<String>(_methodTwitter, arguments);
+      result = await _channel.invokeMethod<String>(_methodTwitter, arguments);
     } catch (e) {
       return e.toString();
     }
@@ -181,22 +177,19 @@ class FlutterShareMe {
     return result;
   }
 
-
   /// share text to instagram [Android only]
-    Future<String?> shareToInstagramText(
-        {required String msg}) async {
-      final Map<String, dynamic> arguments = <String, dynamic>{};
-      arguments.putIfAbsent('msg', () => msg);
+  Future<String?> shareToInstagramText({required String msg}) async {
+    final Map<String, dynamic> arguments = <String, dynamic>{};
+    arguments.putIfAbsent('msg', () => msg);
 
-      String? result;
+    String? result;
 
-      try {
-        result =
-            await _channel.invokeMethod<String>(_methodInstagramShareText, arguments);
-      } catch (e) {
-        return e.toString();
-      }
-      return result;
+    try {
+      result = await _channel.invokeMethod<String>(
+          _methodInstagramShareText, arguments);
+    } catch (e) {
+      return e.toString();
     }
-
+    return result;
+  }
 }
