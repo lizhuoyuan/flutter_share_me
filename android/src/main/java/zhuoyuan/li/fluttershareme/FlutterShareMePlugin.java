@@ -21,7 +21,6 @@ import com.facebook.share.Sharer;
 import com.facebook.share.model.ShareLinkContent;
 import com.facebook.share.widget.MessageDialog;
 import com.facebook.share.widget.ShareDialog;
-import com.twitter.sdk.android.tweetcomposer.TweetComposer;
 
 import java.io.File;
 import java.io.UnsupportedEncodingException;
@@ -49,17 +48,17 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
     final private static String _methodWhatsApp = "whatsapp_share";
     final private static String _methodWhatsAppPersonal = "whatsapp_personal";
     final private static String _methodWhatsAppBusiness = "whatsapp_business_share";
+    
     final private static String _methodFaceBook = "facebook_share";
     final private static String _methodMessenger = "messenger_share";
-
-    final private static String _methodMessengerNew = "messenger_share_new";
+    
     final private static String _methodTwitter = "twitter_share";
-
-    final private static String _methodTwitterNew = "twitter_share_new";
+    
     final private static String _methodSystemShare = "system_share";
+    
     final private static String _methodInstagramShare = "instagram_share";
-
-    final private static String _methodInstagramShareNew = "instagram_share_new";
+    final private static String _methodInstagramShareText = "instagram_share_text";
+    
     final private static String _methodTelegramShare = "telegram_share";
 
 
@@ -110,22 +109,12 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
                 shareToFacebook(url, msg, result);
                 break;
             case _methodMessenger:
-                url = call.argument("url");
                 msg = call.argument("msg");
-                shareToMessenger(url, msg, result);
-                break;
-            case _methodMessengerNew:
-                msg = call.argument("msg");
-                shareToMessengerNew( msg, result);
+                shareToMessenger( msg, result);
                 break;
             case _methodTwitter:
-                url = call.argument("url");
                 msg = call.argument("msg");
-                shareToTwitter(url, msg, result);
-                break;
-            case _methodTwitterNew:
-                msg = call.argument("msg");
-                shareToTwitterNew(msg, result);
+                shareToTwitter(msg, result);
                 break;
             case _methodWhatsApp:
                 msg = call.argument("msg");
@@ -151,10 +140,9 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
                 fileType = call.argument("fileType");
                 shareInstagramStory(msg, fileType, result);
                 break;
-
-            case _methodInstagramShareNew:
+            case _methodInstagramShareText:
                 msg = call.argument("msg");
-                shareInstagramNew(msg,  result);
+                shareInstagramText(msg,  result);
                 break;
             case _methodTelegramShare:
                 msg = call.argument("msg");
@@ -187,27 +175,10 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
     /**
      * share to twitter
      *
-     * @param url    String
      * @param msg    String
      * @param result Result
      */
-
-    private void shareToTwitter(String url, String msg, Result result) {
-        try {
-            TweetComposer.Builder builder = new TweetComposer.Builder(activity)
-                    .text(msg);
-            if (url != null && url.length() > 0) {
-                builder.url(new URL(url));
-            }
-
-            builder.show();
-            result.success("success");
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void shareToTwitterNew(String msg,  Result result) {
+    private void shareToTwitter(String msg,  Result result) {
         if (twitterInstalled()) {
             List<Intent> targetedShareIntents = new ArrayList<Intent>();
 
@@ -291,42 +262,10 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
     /**
      * share to Messenger
      *
-     * @param url    String
      * @param msg    String
      * @param result Result
      */
-    private void shareToMessenger(String url, String msg, Result result) {
-        ShareLinkContent content = new ShareLinkContent.Builder()
-                .setContentUrl(Uri.parse(url))
-                .setQuote(msg)
-                .build();
-        MessageDialog shareDialog = new MessageDialog(activity);
-        shareDialog.registerCallback(callbackManager, new FacebookCallback<Sharer.Result>() {
-            @Override
-            public void onSuccess(Sharer.Result result) {
-                System.out.println("--------------------success");
-            }
-
-            @Override
-            public void onCancel() {
-                System.out.println("-----------------onCancel");
-            }
-
-            @Override
-            public void onError(FacebookException error) {
-                System.out.println("---------------onError");
-            }
-        });
-
-        if (shareDialog.canShow(content)) {
-            shareDialog.show(content);
-            result.success("success");
-        }
-        result.error("error", "Cannot share thought messenger", "");
-    }
-
-
-    private void shareToMessengerNew(String msg,  Result result) {
+    private void shareToMessenger(String msg,  Result result) {
         if (messengerInstalled()) {
             List<Intent> targetedShareIntents = new ArrayList<Intent>();
 
@@ -474,7 +413,7 @@ public class FlutterShareMePlugin implements MethodCallHandler, FlutterPlugin, A
         }
     }
 
-    private void shareInstagramNew(String msg,  Result result) {
+    private void shareInstagramText(String msg,  Result result) {
         if (instagramInstalled()) {
             List<Intent> targetedShareIntents = new ArrayList<Intent>();
 
